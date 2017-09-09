@@ -22,11 +22,11 @@ extension SceneKitVideoRecorder {
       return Options(timeScale: 1000,
                      videoSize: CGSize(width: 1280, height: 720),
                      fps: 60,
-                     outputUrl: URL(fileURLWithPath: NSTemporaryDirectory() + "output.mp4"),
-                     fileType: AVFileTypeAppleM4V,
-                     codec: AVVideoCodecH264,
+                     outputUrl: URL(fileURLWithPath: NSHomeDirectory() + "/Documents/output.mp4"),
+                     fileType: AVFileType.mp4.rawValue,
+                     codec: AVVideoCodecType.h264.rawValue,
                      deleteFileIfExists: true,
-                     useMicrophone: true)
+                     useMicrophone: false)
     }
     
     var assetWriterVideoInputSettings: [String : Any] {
