@@ -54,7 +54,7 @@
         private var videoFramesWritten: Bool = false
         private var waitingForPermissions: Bool = true
 
-        public var updateFrameHandler: ((_ image: UIImage, _ time: CMTime) -> Void)? = nil
+        public var updateFrameHandler: ((_ time: CMTime) -> Void)? = nil
         private var finishedCompletionHandler: ((_ url: URL) -> Void)? = nil
         private let context:CIContext
 
@@ -131,7 +131,8 @@
             captureSession.addInput(audioCaptureInput)
             captureSession.addOutput(audioCaptureOutput)
 
-            self.audioSettings = audioCaptureOutput.recommendedAudioSettingsForAssetWriter(writingTo: AVFileType.m4v) as? [String : Any]
+            self.audioSettings = audioCaptureOutput
+                .recommendedAudioSettingsForAssetWriter(writingTo: AVFileType.mp4) as? [String : Any]
 
             self.audioInput = AVAssetWriterInput(mediaType: AVMediaType.audio, outputSettings: audioSettings )
             self.audioInput?.expectsMediaDataInRealTime = true
@@ -222,8 +223,8 @@
 
         private func startInputPipeline() {
             writer.startWriting()
-            if audioCaptureStartedAt != nil {
-                let millisElapsed = NSDate().timeIntervalSince(audioCaptureStartedAt!) * Double(options.timeScale)
+            if let startDate = audioCaptureStartedAt {
+                let millisElapsed = NSDate().timeIntervalSince(startDate) * Double(options.timeScale)
                 writer.startSession(atSourceTime: CMTimeAdd(firstAudioTimestamp, CMTimeMake(Int64(millisElapsed), Int32(options.timeScale))))
             } else {
                 writer.startSession(atSourceTime: kCMTimeZero);
@@ -232,7 +233,7 @@
         }
 
         private func renderSnapshot() {
-            if !videoInput.isReadyForMoreMediaData { return }
+            guard videoInput.isReadyForMoreMediaData else { return }
 
             autoreleasepool {
 
@@ -244,8 +245,10 @@
 
                 guard let pool = self.pixelBufferAdaptor.pixelBufferPool else { return }
 
-                let (pixelBufferTemp, image) = PixelBufferFactory.make(with: currentDrawable!, usingBuffer: pool)
+                let pixelBufferTemp = PixelBufferFactory.make(with: currentDrawable!, usingBuffer: pool)
+
                 currentDrawable = nil
+
                 guard let pixelBuffer = pixelBufferTemp else { return }
 
                 var presentationTime: CMTime
@@ -260,15 +263,19 @@
                 }
 
                 SceneKitVideoRecorder.bufferAppendSemaphore.wait()
+
+                guard videoInput.isReadyForMoreMediaData else { return }
+
                 bufferQueue.async { [weak self] in
                     if self?.videoFramesWritten == false { self?.videoFramesWritten = true }
                     self?.pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: presentationTime)
                     SceneKitVideoRecorder.bufferAppendSemaphore.signal()
                 }
-                updateFrameHandler?(image, presentationTime)
-            }
-            SceneKitVideoRecorder.frameRenderSemaphore.signal()
 
+                updateFrameHandler?(presentationTime)
+            }
+
+            SceneKitVideoRecorder.frameRenderSemaphore.signal()
         }
 
         private var audioCaptureStartedAt: Date?
