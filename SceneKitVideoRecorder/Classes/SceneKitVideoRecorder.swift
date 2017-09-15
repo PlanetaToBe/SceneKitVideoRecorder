@@ -144,8 +144,9 @@
 
         private func prepare(with options: Options) {
 
-            self.options.videoSize = CGSize(width: metalLayer.bounds.size.width * UIScreen.main.scale,
-                                            height: metalLayer.bounds.size.height * UIScreen.main.scale)
+            let viewSize = metalLayer.bounds.size
+            self.options.videoSize = CGSize(width: viewSize.width * UIScreen.main.scale,
+                                            height: viewSize.height * UIScreen.main.scale)
 
             self.writer = try! AVAssetWriter(
                 outputURL: self.options.outputUrl,
